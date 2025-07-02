@@ -1,6 +1,15 @@
 import os, sys, shutil, getpass, glob
 from colorama import Fore, Style
 
+def cmd_cd(args, *_):
+    try:
+        if not args:
+            os.chdir(os.path.expanduser("~"))
+        else:
+            os.chdir(args[0])
+    except Exception as e:
+        yield f"{Fore.RED}cd: {e}{Style.RESET_ALL}"
+
 def cmd_help(args, input_lines=None, all_commands=None):
     yield f"{Fore.YELLOW}Busybox commands:{Style.RESET_ALL}"
     for c in sorted(COMMANDS.keys()):
@@ -27,8 +36,7 @@ def cmd_cat(args, *_):
 def cmd_ls(args, *_):
     path = args[0] if args else os.getcwd()
     try:
-        entries = os.listdir(path)
-        entries = sorted(entries)
+        entries = sorted(os.listdir(path))
         for e in entries:
             full_path = os.path.join(path, e)
             if os.path.isdir(full_path):
@@ -154,8 +162,9 @@ def cmd_tail(args, *_):
     except Exception as e:
         yield f"{Fore.RED}tail: {e}{Style.RESET_ALL}"
 
-# BusyBox-style command map
+# Command map
 COMMANDS = {
+    "cd": cmd_cd,
     "help": cmd_help,
     "cat": cmd_cat,
     "ls": cmd_ls,
@@ -176,17 +185,17 @@ COMMANDS = {
 }
 
 def register(shell_commands):
-    for name in COMMANDS:
-        def make_wrapper(name):
+    for name, func in COMMANDS.items():
+        def make_wrapper(f, cmd_name=name):
             def wrapper(args, print_func):
                 try:
-                    if name == "help":
-                        result = COMMANDS[name](args, all_commands=shell_commands)
+                    if cmd_name == "help":
+                        result = f(args, all_commands=shell_commands)
                     else:
-                        result = COMMANDS[name](args)
+                        result = f(args)
                     for line in result:
                         print_func(line)
                 except Exception as e:
-                    print_func(f"{Fore.RED}{name}: {e}{Style.RESET_ALL}")
+                    print_func(f"{Fore.RED}{cmd_name}: {e}{Style.RESET_ALL}")
             return wrapper
-        shell_commands[name] = make_wrapper(name)
+        shell_commands[name] = make_wrapper(func)
