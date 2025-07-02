@@ -1,4 +1,8 @@
-import os, sys, shutil, getpass, glob
+import os
+import platform
+import sys
+import getpass
+import shutil
 from colorama import Fore, Style
 
 def cmd_cd(args, *_):
@@ -162,6 +166,22 @@ def cmd_tail(args, *_):
     except Exception as e:
         yield f"{Fore.RED}tail: {e}{Style.RESET_ALL}"
 
+def cmd_busybox(args, *_):
+    yield f"{Fore.YELLOW}Pseudo Busybox (Busybox-like){Style.RESET_ALL}"
+    yield f"{Fore.CYAN}A lightweight busybox-inspired shell extension for Python Shell.{Style.RESET_ALL}"
+    yield ""
+    yield f"{Fore.YELLOW}Supported commands:{Style.RESET_ALL}"
+    for c in sorted(COMMANDS.keys()):
+        yield f"  {Fore.GREEN}{c}{Style.RESET_ALL}"
+    yield ""
+    yield f"{Fore.YELLOW}Shell info:{Style.RESET_ALL}"
+    yield f"  Python version: {platform.python_version()}"
+    yield f"  Platform: {platform.system()} {platform.release()}"
+    yield f"  Current user: {getpass.getuser()}"
+    yield f"  Current directory: {os.getcwd()}"
+    yield ""
+    yield f"{Fore.MAGENTA}Type 'help' to see all commands.{Style.RESET_ALL}"
+
 # Command map
 COMMANDS = {
     "cd": cmd_cd,
@@ -182,6 +202,7 @@ COMMANDS = {
     "dirname": cmd_dirname,
     "head": cmd_head,
     "tail": cmd_tail,
+    "busybox": cmd_busybox,
 }
 
 def register(shell_commands):
