@@ -1,8 +1,14 @@
 import os
 import glob
 import importlib.util
-import urllib.request
+from time import sleep
 from colorama import Fore, Style
+
+# We'll import requests with a fallback in case it's missing
+try:
+    import requests
+except ImportError:
+    requests = None
 
 REPO_BASE = "https://raw.githubusercontent.com/HamzahHossam12121/pyshellrepo/main/extensions/"
 CORE_FILES = [
@@ -15,6 +21,25 @@ CORE_FILES = [
     "__init__.py"
 ]
 
+def download_file(url, dest, print_func, retries=3, delay=2):
+    if requests is None:
+        print_func(f"{Fore.RED}Error: 'requests' module not installed. Please install it with 'pip install requests'.{Style.RESET_ALL}")
+        return False
+    for attempt in range(1, retries + 1):
+        try:
+            response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+            response.raise_for_status()
+            with open(dest, 'wb') as f:
+                f.write(response.content)
+            print_func(f"{Fore.GREEN}Downloaded: {os.path.basename(dest)}{Style.RESET_ALL}")
+            return True
+        except Exception as e:
+            print_func(f"{Fore.YELLOW}Attempt {attempt} failed to download {os.path.basename(dest)}: {e}{Style.RESET_ALL}")
+            if attempt < retries:
+                sleep(delay)
+    print_func(f"{Fore.RED}Failed to download {os.path.basename(dest)} after {retries} attempts.{Style.RESET_ALL}")
+    return False
+
 def repairshell_command(args, print_func):
     print_func(f"{Fore.YELLOW}Repairing core shell files...{Style.RESET_ALL}")
 
@@ -24,22 +49,15 @@ def repairshell_command(args, print_func):
         print_func(f"{Fore.RED}Internal error: COMMANDS not found.{Style.RESET_ALL}")
         return
 
-    # 1. Download files with proper User-Agent header
     success, fail = 0, 0
     for fname in CORE_FILES:
         url = REPO_BASE + fname
         dest = os.path.join(ext_dir, fname)
-        try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req) as response, open(dest, 'wb') as out_file:
-                out_file.write(response.read())
-            print_func(f"{Fore.GREEN}Downloaded: {fname}{Style.RESET_ALL}")
+        if download_file(url, dest, print_func):
             success += 1
-        except Exception as e:
-            print_func(f"{Fore.RED}Failed to download {fname}: {e}{Style.RESET_ALL}")
+        else:
             fail += 1
 
-    # 2. Reload extensions (manual)
     print_func(f"\n{Fore.YELLOW}Reloading extensions...{Style.RESET_ALL}")
 
     for cmd in list(commands.keys()):
@@ -49,7 +67,7 @@ def repairshell_command(args, print_func):
     for file_path in glob.glob(os.path.join(ext_dir, "*.py")):
         name = os.path.splitext(os.path.basename(file_path))[0]
         if name == "repairshell":
-            continue  # don't reload itself
+            continue
         try:
             spec = importlib.util.spec_from_file_location(name, file_path)
             mod = importlib.util.module_from_spec(spec)
@@ -64,4 +82,4 @@ def repairshell_command(args, print_func):
 
 def register(commands):
     commands["repairshell"] = lambda args, print_func: repairshell_command(args, print_func)
-    globals()["COMMANDS"] = commands  # so repairshell_command can access it
+    globals()["COMMANDS"] = commands
