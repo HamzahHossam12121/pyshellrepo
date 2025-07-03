@@ -17,20 +17,21 @@ CORE_FILES = [
 
 def repairshell_command(args, print_func):
     print_func(f"{Fore.YELLOW}Repairing core shell files...{Style.RESET_ALL}")
-    
+
     ext_dir = os.path.dirname(__file__)
     commands = globals().get("COMMANDS", None)
     if commands is None:
         print_func(f"{Fore.RED}Internal error: COMMANDS not found.{Style.RESET_ALL}")
         return
 
-    # 1. Download files
+    # 1. Download files with proper User-Agent header
     success, fail = 0, 0
     for fname in CORE_FILES:
         url = REPO_BASE + fname
         dest = os.path.join(ext_dir, fname)
         try:
-            with urllib.request.urlopen(url) as response, open(dest, 'wb') as out_file:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req) as response, open(dest, 'wb') as out_file:
                 out_file.write(response.read())
             print_func(f"{Fore.GREEN}Downloaded: {fname}{Style.RESET_ALL}")
             success += 1
@@ -38,10 +39,9 @@ def repairshell_command(args, print_func):
             print_func(f"{Fore.RED}Failed to download {fname}: {e}{Style.RESET_ALL}")
             fail += 1
 
-    # 2. Reload logic (manual)
+    # 2. Reload extensions (manual)
     print_func(f"\n{Fore.YELLOW}Reloading extensions...{Style.RESET_ALL}")
 
-    extension_commands = set()
     for cmd in list(commands.keys()):
         if cmd != "repairshell":
             del commands[cmd]
